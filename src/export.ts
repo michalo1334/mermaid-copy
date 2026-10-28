@@ -9,13 +9,48 @@ function dimensions(svg: SVGSVGElement): { width: number; height: number } {
     return numeric || (viewBox.length === 4 && viewBox[index] > 0 ? viewBox[index] : 0) || rect[name] || svg.getBBox()[name];
   };
   const width = dimension("width", 2), height = dimension("height", 3);
-  if (!(width > 0 && height > 0)) throw new Error("Invalid diagram dimensions");
+  if (!(Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0)) throw new Error("Invalid diagram dimensions");
   return { width, height };
 }
 
 export function extractSvgString(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.removeAttribute("xmlns");
+  clone.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns", "http://www.w3.org/2000/svg");
+
+  // Copy only referenced inherited custom properties, including transitive var()
+  // references. Inline values remain authoritative and no background is added.
+  const computed = getComputedStyle(svg);
+  const pending = Array.from(new XMLSerializer().serializeToString(clone).matchAll(/var\(\s*(--[\w-]+)/g), m => m[1]);
+  const seen = new Set<string>();
+  while (pending.length) {
+    const name = pending.pop()!;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const value = computed.getPropertyValue(name).trim();
+    if (!value || /url\s*\(/i.test(value)) continue;
+    if (!clone.style.getPropertyValue(name)) clone.style.setProperty(name, value);
+    for (const match of Array.from(value.matchAll(/var\(\s*(--[\w-]+)/g))) pending.push(match[1]);
+  }
+  for (const property of ["font-family", "color"] as const) {
+    const value = computed.getPropertyValue(property).trim();
+    if (value && !clone.style.getPropertyValue(property)) clone.style.setProperty(property, value);
+  }
+  // HTML-parsed Mermaid C4 can carry a literal xlink:href without an XML
+  // namespace. Normalize it so the standalone SVG remains well-formed XML.
+  let hasXlink = false;
+  for (const element of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
+    const href = element.getAttribute("xlink:href");
+    if (href !== null) {
+      element.removeAttribute("xlink:href");
+      element.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", href);
+      hasXlink = true;
+    }
+  }
+  if (hasXlink) {
+    clone.removeAttribute("xmlns:xlink");
+    clone.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:xlink", "http://www.w3.org/1999/xlink");
+  }
 
   const size = dimensions(svg);
   for (const name of ["width", "height"] as const) {

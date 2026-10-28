@@ -1,6 +1,6 @@
 {
   "name": "obsidian-mermaid-copy",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Copy Mermaid diagrams as SVG or PNG from Obsidian",
   "main": "main.js",
   "license": "MIT",

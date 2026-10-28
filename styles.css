@@ -1,3 +1,12 @@
 .cm-embed-block .edit-block-button.mermaid-copy-btn {
-  right: 30px !important; 
+  right: 30px !important;
+}
+
+.markdown-preview-view .mermaid-copy-btn {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.25em 0;
+  opacity: 1;
 }

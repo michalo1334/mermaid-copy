@@ -1,19 +1,19 @@
 # Mermaid Copy
 
-An Obsidian plugin that adds a copy button to rendered Mermaid diagrams in Live Preview mode.
+An Obsidian plugin that adds a copy button to rendered Mermaid and Mermaid Next diagrams in Live Preview and Reading View.
 
 ## Features
 
 - One-click copy of any Mermaid diagram
 - Copy as **PNG** (image) or **SVG** (markup) — configurable in settings
-- Button appears next to the existing edit button on each diagram
+- Button appears next to the edit button in Live Preview, or below the diagram in Reading View
 - Transparent PNG background preserves theme colors
 
 ## Usage
 
-1. Write a Mermaid code block in any note
-2. In Live Preview, hover over the rendered diagram
-3. Click the copy icon (next to the edit icon)
+1. Write a `mermaid` or `mermaid-next` code block in any note (the latter requires the Mermaid Next plugin)
+2. Open the rendered diagram in Live Preview or Reading View
+3. Click the copy icon
 4. Paste into any app — Slack, Docs, email, etc.
 
 ## Settings
