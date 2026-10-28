@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS: MermaidCopySettings = {
 export default class MermaidCopyPlugin extends Plugin {
   settings: MermaidCopySettings = DEFAULT_SETTINGS;
   private observer: MutationObserver | null = null;
+  private buttons = new Map<HTMLElement, HTMLElement>();
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private activeTimeouts: Set<ReturnType<typeof setTimeout>> = new Set();
 
@@ -39,7 +40,8 @@ export default class MermaidCopyPlugin extends Plugin {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     for (const t of this.activeTimeouts) clearTimeout(t);
     this.activeTimeouts.clear();
-    document.querySelectorAll(".mermaid-copy-btn").forEach((el) => el.remove());
+    this.buttons.forEach((button) => button.remove());
+    this.buttons.clear();
   }
 
   async loadSettings() {
@@ -54,7 +56,9 @@ export default class MermaidCopyPlugin extends Plugin {
     const target = document.querySelector(".workspace");
     if (!target) return;
 
-    this.observer = new MutationObserver(() => this.scheduleProcess());
+    this.observer = new MutationObserver((records) => {
+      if (records.some((r) => [...Array.from(r.addedNodes), ...Array.from(r.removedNodes)].some((n) => !(n instanceof Element) || !n.classList.contains("mermaid-copy-btn")))) this.scheduleProcess();
+    });
     this.observer.observe(target, { childList: true, subtree: true });
   }
 
@@ -64,35 +68,42 @@ export default class MermaidCopyPlugin extends Plugin {
   }
 
   private processAll(): void {
-    document.querySelectorAll(".cm-embed-block.cm-lang-mermaid").forEach((block) => {
-      if (block.querySelector(".mermaid-copy-btn")) return;
-      if (!block.querySelector(".mermaid svg")) return;
+    this.buttons.forEach((button, block) => {
+      if (!block.isConnected || !button.isConnected || !block.querySelector("svg")) {
+        button.remove();
+        this.buttons.delete(block);
+      }
+    });
+    const blocks = document.querySelectorAll<HTMLElement>(
+      ".cm-embed-block.cm-lang-mermaid, .cm-embed-block.cm-lang-mermaid-next, .markdown-preview-view .mermaid, .markdown-preview-view .mermaid-next"
+    );
+    blocks.forEach((block) => {
+      // Reading-view renderers replace their own children asynchronously, so put
+      // the button in their parent rather than inside the renderer's output.
+      const live = block.matches(".cm-embed-block");
+      const host = live ? block : block.parentElement;
+      if (!host || !block.querySelector("svg")) return;
+      if (this.buttons.has(block)) return;
+      const editBtn = live ? block.querySelector<HTMLElement>(".edit-block-button") : null;
+      if (live && !editBtn) return;
 
-      const editBtn = block.querySelector<HTMLElement>(".edit-block-button");
-      if (!editBtn) return;
-
-      const copyBtn = document.createElement("div");
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
       copyBtn.className = "edit-block-button mermaid-copy-btn";
       copyBtn.setAttribute("aria-label", "Copy diagram");
+      copyBtn.setAttribute("title", "Copy diagram");
       setIcon(copyBtn, "copy");
-
       copyBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const svg = block.querySelector<SVGSVGElement>(".mermaid svg");
-        if (!svg) {
-          new Notice("No diagram found");
-          return;
-        }
+        const svg = block.querySelector<SVGSVGElement>("svg");
+        if (!svg) { new Notice("No diagram found"); return; }
         try {
-          if (this.settings.copyFormat === "svg") {
-            await copySvgToClipboard(svg);
-          } else {
-            await copyPngToClipboard(svg);
-          }
+          if (this.settings.copyFormat === "svg") await copySvgToClipboard(svg);
+          else await copyPngToClipboard(svg);
           setIcon(copyBtn, "check");
           const t = setTimeout(() => {
-            setIcon(copyBtn, "copy");
+            if (copyBtn.isConnected) setIcon(copyBtn, "copy");
             this.activeTimeouts.delete(t);
           }, 2000);
           this.activeTimeouts.add(t);
@@ -101,8 +112,9 @@ export default class MermaidCopyPlugin extends Plugin {
           console.error(err);
         }
       });
-
-      editBtn.insertAdjacentElement("afterend", copyBtn);
+      if (editBtn) editBtn.insertAdjacentElement("afterend", copyBtn);
+      else block.insertAdjacentElement("afterend", copyBtn);
+      this.buttons.set(block, copyBtn);
     });
   }
 }

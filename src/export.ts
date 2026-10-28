@@ -1,13 +1,27 @@
 import { Notice } from "obsidian";
 
+function dimensions(svg: SVGSVGElement): { width: number; height: number } {
+  const viewBox = (svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+  const rect = svg.getBoundingClientRect();
+  const dimension = (name: "width" | "height", index: number) => {
+    const attr = svg.getAttribute(name) || "";
+    const numeric = /^\s*\d+(?:\.\d+)?(?:px)?\s*$/.test(attr) ? parseFloat(attr) : 0;
+    return numeric || (viewBox.length === 4 && viewBox[index] > 0 ? viewBox[index] : 0) || rect[name] || svg.getBBox()[name];
+  };
+  const width = dimension("width", 2), height = dimension("height", 3);
+  if (!(width > 0 && height > 0)) throw new Error("Invalid diagram dimensions");
+  return { width, height };
+}
+
 export function extractSvgString(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
 
-  if (!clone.getAttribute("width") || !clone.getAttribute("height")) {
-    const bbox = svg.getBBox();
-    clone.setAttribute("width", String(bbox.width));
-    clone.setAttribute("height", String(bbox.height));
+  const size = dimensions(svg);
+  for (const name of ["width", "height"] as const) {
+    if (!/^\s*\d+(?:\.\d+)?(?:px)?\s*$/.test(clone.getAttribute(name) || "")) {
+      clone.setAttribute(name, String(size[name]));
+    }
   }
 
   return new XMLSerializer().serializeToString(clone);
@@ -16,8 +30,7 @@ export function extractSvgString(svg: SVGSVGElement): string {
 export async function svgToPngBlob(svg: SVGSVGElement, scale = 2): Promise<Blob> {
   const svgString = extractSvgString(svg);
 
-  const width = parseFloat(svg.getAttribute("width") || String(svg.getBBox().width));
-  const height = parseFloat(svg.getAttribute("height") || String(svg.getBBox().height));
+  const { width, height } = dimensions(svg);
 
   const base64 = btoa(
     Array.from(new TextEncoder().encode(svgString), (b) => String.fromCharCode(b)).join("")
@@ -59,8 +72,7 @@ export async function copyPngToClipboard(svg: SVGSVGElement): Promise<void> {
   const blob = await svgToPngBlob(svg);
 
   if (typeof ClipboardItem === "undefined" || !navigator.clipboard.write) {
-    new Notice("PNG copy is not supported on this device — try SVG format in settings");
-    return;
+    throw new Error("PNG copy is not supported on this device — try SVG format in settings");
   }
 
   await navigator.clipboard.write([
