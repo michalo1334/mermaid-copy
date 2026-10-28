@@ -1,6 +1,6 @@
 # Mermaid Copy
 
-An Obsidian plugin that adds a copy button to rendered Mermaid and Mermaid Next diagrams in Live Preview and Reading View.
+This is [michalo1334's fork](https://github.com/michalo1334/mermaid-copy) of [MBlogs/mermaid-copy](https://github.com/MBlogs/mermaid-copy). It adds a copy button to rendered Mermaid and Mermaid Next diagrams in Live Preview and Reading View.
 
 ## Features
 
@@ -22,15 +22,11 @@ An Obsidian plugin that adds a copy button to rendered Mermaid and Mermaid Next 
 
 ## Installation
 
-### From Community Plugins
+### Manual installation of this fork
 
-1. Open Obsidian Settings > Community Plugins
-2. Search for "Mermaid Copy"
-3. Install and enable
+The Community Plugins listing installs the upstream plugin, not this fork.
 
-### Manual
-
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release
+1. Download `main.js`, `manifest.json`, and `styles.css` from [this fork's latest release](https://github.com/michalo1334/mermaid-copy/releases/latest)
 2. Create a folder `mermaid-copy` in your vault's `.obsidian/plugins/` directory
 3. Place the downloaded files into that folder
 4. Enable the plugin in Obsidian Settings > Community Plugins
